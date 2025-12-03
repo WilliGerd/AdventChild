@@ -1,0 +1,234 @@
+
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <!-- Wichtig für Mobilgeräte -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Adventskalender mit Sound</title>
+  <style>
+    :root {
+      /* Türchengröße dynamisch:
+         - mindestens 56px
+         - je nach Breite ~16vw
+         - höchstens 100px
+      */
+      --door-size: clamp(56px, 16vw, 100px);
+      --gap: 8px;
+    }
+
+    /* Hintergrund bleibt vollflächig */
+    body {
+      font-family: Arial, sans-serif;
+      background: url('bilder/background.jpg') no-repeat center center;
+      background-size: cover;
+      /* 100svh = „small viewport height“ -> besseres Verhalten auf Mobilbrowsern */
+      min-height: 100svh;
+      margin: 0;
+      /* Scrollen erlauben */
+      overflow: auto;
+      position: relative;
+    }
+
+    /* Kalender als Grid */
+    .calendar {
+      /* Legt sich über den Hintergrund */
+      position: relative;
+      width: 100%;
+      /* Genug Innenabstand, damit nichts am Rand klebt */
+      padding: 12px;
+      display: grid;
+      /* so viele Spalten wie sinnvoll, Türen breiter dürfen umbrechen */
+      grid-template-columns: repeat(auto-fit, minmax(var(--door-size), 1fr));
+      grid-auto-rows: var(--door-size);
+      gap: var(--gap);
+      /* Falls der Inhalt sehr hoch wird: eigenes Scrollen möglich */
+      /* (optional – meist reicht body-Scroll) */
+      /* max-height: 100svh; overflow: auto; */
+    }
+
+    .door {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      cursor: pointer;
+      transform-style: preserve-3d;
+      transition: transform 0.8s;
+    }
+
+    .door .front, .door .back {
+      position: absolute;
+      inset: 0;                /* ersetzt width/height 100% */
+      backface-visibility: hidden;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 1.25em;
+      font-weight: bold;
+      
+border: 2px solid #FFD700; /* Rahmen in hellgelb (Gold) */
+  border-radius: 6px;
+  color: #FFD700; /* Schriftfarbe hellgelb */
+
+    }
+
+    .door .front {
+      background-color: transparent   /*rgba(255, 255, 255, 0.85); */
+      
+    }
+
+    .door .back {
+      background-color: transparent;
+      color: gold;
+      transform: rotateY(180deg);
+      font-size: 1.6em;
+    }
+
+    .door.opened {
+      transform: rotateY(180deg);
+    }
+
+    .overlay {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0,0,0,0.8);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 999;
+      visibility: hidden;
+      opacity: 0;
+      transition: opacity 0.5s;
+      padding: 2vw;
+      box-sizing: border-box;
+    }
+    .overlay img {
+      max-width: 95%;
+      max-height: 95%;
+      border: 5px solid white;
+      box-shadow: 0 0 20px #fff;
+      border-radius: 8px;
+    }
+    .overlay.show {
+      visibility: visible;
+      opacity: 1;
+    }
+
+    /* Schneefall – kleiner und schneller auf Mobile */
+    .snowflake {
+      position: fixed;
+      top: -10px;
+      color: white;
+      font-size: 1.4em;
+      animation: fall linear infinite;
+      pointer-events: none;
+      user-select: none;
+    }
+    @keyframes fall {
+      to { transform: translateY(100vh); }
+    }
+
+    /* Zusätzliche Optimierung für sehr kleine Bildschirme */
+    @media (max-width: 480px) {
+      :root {
+        --door-size: clamp(52px, 20vw, 88px);
+        --gap: 6px;
+      }
+      .door .front, .door .back {
+        border-width: 1.5px;
+        font-size: 1.1em;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="calendar" id="calendar"></div>
+
+  <div class="overlay" id="overlay">
+    <img id="overlay-img" src="" alt="Advent Bild">
+  </div>
+
+  <!-- Audio für Soundeffekt -->
+  <audio id="door-sound" src="sounds/bell.mp3" preload="auto"></audio>
+
+  <script>
+    const calendar   = document.getElementById('calendar');
+    const overlay    = document.getElementById('overlay');
+    const overlayImg = document.getElementById('overlay-img');
+    const doorSound  = document.getElementById('door-sound');
+
+    // Bildpfade: bilder/1.jpg ... bilder/24.jpg
+    const images = [];
+    for (let i = 1; i <= 24; i++) images.push(`bilder/${i}.jpg`);
+
+    // Nur im Dezember die Tür des aktuellen Tages (und kleinere Tage) öffnen
+    const today = new Date();
+    const currentDay = (today.getMonth() === 11) ? today.getDate() : 0; // 11 = Dezember
+
+    // OPTIONAL: Wenn du die Reihenfolge mischen willst, aktiviere das Shuffle:
+    // const order = Array.from({ length: 24 }, (_, idx) => idx + 1);
+    // for (let k = order.length - 1; k > 0; k--) {
+    //   const r = Math.floor(Math.random() * (k + 1));
+    //   [order[k], order[r]] = [order[r], order[k]];
+    // }
+    // for (const i of order) { createDoor(i); }
+
+    // Standard: 1..24 in normaler Reihenfolge
+    for (let i = 1; i <= 24; i++) createDoor(i);
+
+    function createDoor(i) {
+      const door = document.createElement('div');
+      door.classList.add('door');
+
+      const front = document.createElement('div');
+      front.classList.add('front');
+      front.textContent = i;
+
+      const back = document.createElement('div');
+      back.classList.add('back');
+      back.textContent = '★';
+
+      door.appendChild(front);
+      door.appendChild(back);
+
+      door.addEventListener('click', () => {
+        if (i <= currentDay) {
+          door.classList.add('opened');
+          if (doorSound) {
+            doorSound.currentTime = 0;
+            doorSound.play().catch(() => {/* Autoplay blockiert – ignorieren */});
+          }
+          showImage(images[i - 1]);
+        } else {
+          alert(`Dieses Türchen darfst du erst am ${i}. Dezember öffnen!`);
+        }
+      });
+
+      calendar.appendChild(door);
+    }
+
+    function showImage(src) {
+      overlayImg.src = src;
+      overlay.classList.add('show');
+      setTimeout(() => {
+        overlay.classList.remove('show');
+        overlayImg.src = '';
+      }, 10000);
+    }
+
+    // Schneefall
+    function createSnowflake() {
+      const snowflake = document.createElement('div');
+      snowflake.classList.add('snowflake');
+      snowflake.textContent = '❄';
+      snowflake.style.left = Math.random() * window.innerWidth + 'px';
+      snowflake.style.fontSize = (Math.random() * 8 + 10) + 'px';
+      snowflake.style.animationDuration = (Math.random() * 3 + 2) + 's';
+      document.body.appendChild(snowflake);
+      setTimeout(() => snowflake.remove(), 5000);
+    }
+    setInterval(createSnowflake, 220);
+  </script>
+</body>
+</html>
