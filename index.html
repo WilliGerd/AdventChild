@@ -167,15 +167,15 @@ border: 2px solid #FFD700; /* Rahmen in hellgelb (Gold) */
     const currentDay = (today.getMonth() === 11) ? today.getDate() : 0; // 11 = Dezember
 
     // OPTIONAL: Wenn du die Reihenfolge mischen willst, aktiviere das Shuffle:
-    // const order = Array.from({ length: 24 }, (_, idx) => idx + 1);
-    // for (let k = order.length - 1; k > 0; k--) {
-    //   const r = Math.floor(Math.random() * (k + 1));
-    //   [order[k], order[r]] = [order[r], order[k]];
-    // }
-    // for (const i of order) { createDoor(i); }
+     const order = Array.from({ length: 24 }, (_, idx) => idx + 1);
+  for (let k = order.length - 1; k > 0; k--) {
+     const r = Math.floor(Math.random() * (k + 1));
+      [order[k], order[r]] = [order[r], order[k]];
+     }
+    for (const i of order) { createDoor(i); }
 
     // Standard: 1..24 in normaler Reihenfolge
-    for (let i = 1; i <= 24; i++) createDoor(i);
+    // for (let i = 1; i <= 24; i++) createDoor(i);
 
     function createDoor(i) {
       const door = document.createElement('div');
@@ -193,7 +193,7 @@ border: 2px solid #FFD700; /* Rahmen in hellgelb (Gold) */
       door.appendChild(back);
 
       door.addEventListener('click', () => {
-        if (i <= 25) {
+        if (i <= currentDay) {
           door.classList.add('opened');
           if (doorSound) {
             doorSound.currentTime = 0;
@@ -214,7 +214,7 @@ border: 2px solid #FFD700; /* Rahmen in hellgelb (Gold) */
       setTimeout(() => {
         overlay.classList.remove('show');
         overlayImg.src = '';
-      }, 10000);
+      }, 7000);
     }
 
     // Schneefall
